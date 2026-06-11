@@ -1,0 +1,51 @@
+.help-panel h1 {
+  margin: 0;
+}
+
+.help-grid {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.help-grid article {
+  background: rgba(32, 37, 49, 0.56);
+  border: 1px solid rgba(233, 173, 199, 0.2);
+  border-radius: 14px;
+  padding: 14px;
+  transition: all 0.2s ease;
+}
+
+.help-grid article:hover {
+  border-color: rgba(233, 173, 199, 0.35);
+  background: rgba(32, 37, 49, 0.8);
+}
+
+.help-grid h3 {
+  margin: 0 0 8px;
+  color: var(--text-main);
+}
+
+.help-grid p {
+  margin: 0;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.grade-guide ul {
+  margin-top: 12px;
+  margin-bottom: 0;
+  padding-left: 18px;
+}
+
+.grade-guide li {
+  margin: 8px 0;
+  color: var(--text-main);
+}
+
+@media (max-width: 900px) {
+  .help-grid {
+    grid-template-columns: 1fr;
+  }
+}

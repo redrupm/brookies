@@ -1,0 +1,57 @@
+[
+  {
+    "ticker": "AAPL",
+    "company_name": "Apple Inc.",
+    "sector": "Technology"
+  },
+  {
+    "ticker": "AMZN",
+    "company_name": "Amazon.com, Inc.",
+    "sector": "Consumer Cyclical"
+  },
+  {
+    "ticker": "GOOG",
+    "company_name": "Alphabet Inc.",
+    "sector": "Communication Services"
+  },
+  {
+    "ticker": "MSFT",
+    "company_name": "Microsoft Corporation",
+    "sector": "Technology"
+  },
+  {
+    "ticker": "NFLX",
+    "company_name": "Netflix, Inc.",
+    "sector": "Communication Services"
+  },
+  {
+    "ticker": "NVDA",
+    "company_name": "NVIDIA Corporation",
+    "sector": "Technology"
+  },
+  {
+    "ticker": "CVS",
+    "company_name": " CVS Health Corporation",
+    "sector": "Healthcare"
+  }, 
+  {
+    "ticker": "T",
+    "company_name": "AT&T Inc.",
+    "sector": "Communication Services"
+  },
+  {
+    "ticker": "CMCSA",
+    "company_name": "Comcast Corporation",
+    "sector": "Communication Services"
+  },
+  {
+    "ticker": "VZ",
+    "company_name": "Verizon Communications Inc.",
+    "sector": "Communication Services"
+  },
+  {
+    "ticker": "IBM",
+    "company_name": "International Business Machines Corporation",
+    "sector": "Technology"
+  }
+]

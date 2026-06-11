@@ -1,0 +1,42 @@
+.panel,
+.hero-panel,
+.stock-card,
+.radar-card,
+.metric-explainer,
+.grade-guide {
+  background: linear-gradient(
+    160deg,
+    rgba(36, 43, 58, 0.95),
+    rgba(42, 51, 70, 0.88)
+  );
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  border-radius: 18px;
+}
+
+.hero-panel {
+  padding: 28px;
+}
+
+.eyebrow {
+  margin: 0 0 10px;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-primary);
+}
+
+.hero-panel h1 {
+  margin: 0;
+  font-size: clamp(1.6rem, 2.3vw, 2.3rem);
+}
+
+.hero-panel p {
+  margin-top: 14px;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.panel {
+  padding: 22px;
+}

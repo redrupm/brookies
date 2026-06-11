@@ -1,0 +1,47 @@
+.radar-card {
+  padding: 18px;
+}
+
+.radar-card h3 {
+  margin: 0;
+}
+
+.radar-wrap {
+  width: 100%;
+  height: 320px;
+}
+
+.metric-snapshot-help {
+  display: inline-block;
+  margin-top: 12px;
+}
+
+.metric-breakdown {
+  display: grid;
+  gap: 12px;
+}
+
+.metric-breakdown h3 {
+  margin: 0;
+}
+
+.metric-breakdown-list {
+  display: grid;
+  gap: 10px;
+}
+
+.metric-explainer {
+  padding: 14px;
+}
+
+.metric-explainer-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.metric-explainer-head p,
+.metric-explainer p {
+  margin: 0;
+}

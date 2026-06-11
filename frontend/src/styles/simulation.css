@@ -1,0 +1,170 @@
+.simulation-shell {
+  display: grid;
+  gap: 20px;
+}
+
+.simulation-grid {
+  display: grid;
+  grid-template-columns: minmax(320px, 0.95fr) minmax(360px, 1.05fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.simulation-stack {
+  display: grid;
+  gap: 20px;
+}
+
+.field-group {
+  display: grid;
+  gap: 8px;
+}
+
+.field-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.helper-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.risk-meter {
+  display: grid;
+  gap: 10px;
+}
+
+.risk-meter input[type='range'] {
+  width: 100%;
+}
+
+.risk-pill {
+  align-self: start;
+  justify-self: start;
+  padding: 7px 11px;
+  border-radius: 999px;
+  border: 1px solid rgba(96, 111, 230, 0.35);
+  background: rgba(32, 37, 49, 0.65);
+  color: var(--text-main);
+  font-weight: 600;
+}
+
+.json-editor {
+  min-height: 220px;
+  resize: vertical;
+  width: 100%;
+  border-radius: 14px;
+  border: 1px solid rgba(96, 111, 230, 0.45);
+  background: rgba(32, 37, 49, 0.8);
+  color: var(--text-main);
+  padding: 14px;
+  font-family: 'Consolas', 'SFMono-Regular', ui-monospace, monospace;
+  line-height: 1.5;
+}
+
+.simulation-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.simulation-actions button {
+  margin-top: 0;
+}
+
+.simulation-error {
+  color: var(--danger);
+  margin: 0;
+}
+
+.simulation-success {
+  color: var(--success);
+  margin: 0;
+}
+
+.simulation-table-wrap {
+  overflow-x: auto;
+}
+
+.simulation-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 720px;
+}
+
+.simulation-table th,
+.simulation-table td {
+  text-align: left;
+  padding: 12px 10px;
+  border-bottom: 1px solid rgba(233, 173, 199, 0.14);
+  vertical-align: top;
+}
+
+.simulation-table th {
+  color: var(--text-muted);
+  font-size: 0.84rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.simulation-table tr:last-child td {
+  border-bottom: 0;
+}
+
+.action-buy {
+  color: var(--success);
+  font-weight: 700;
+}
+
+.action-sell {
+  color: var(--danger);
+  font-weight: 700;
+}
+
+.action-keep {
+  color: var(--color-highlight);
+  font-weight: 700;
+}
+
+.simulation-summary {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.summary-card {
+  padding: 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(96, 111, 230, 0.22);
+  background: rgba(32, 37, 49, 0.55);
+}
+
+.summary-card p {
+  margin: 0;
+}
+
+.summary-card strong {
+  display: block;
+  margin-top: 4px;
+  font-size: 1.2rem;
+}
+
+@media (max-width: 980px) {
+  .simulation-grid,
+  .simulation-summary,
+  .field-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .simulation-table {
+    min-width: 620px;
+  }
+}
