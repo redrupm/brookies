@@ -24,10 +24,6 @@ function buildPortfolioInsight() {
   };
 }
 
-function isFiniteNumber(value: unknown): value is number {
-  return typeof value === 'number' && Number.isFinite(value);
-}
-
 export default function StockDetail() {
   const { symbol } = useParams();
   const navigate = useNavigate();
@@ -127,7 +123,7 @@ export default function StockDetail() {
   }
 
   const displayMetrics = [
-    { name: 'News', score: stockData.metrics.news.score ?? 0, rationale: stockData.metrics.news.rationale },
+    { name: 'News', score: stockData.metrics.news.score ?? 0, rationale: stockData.metrics.news.reasoning },
     { name: 'Trend', score: trendScore, rationale: trendRationale },
     { name: 'Diversity', score: insight.diversityScore, rationale: insight.diversityRationale },
     { name: 'Stability', score: insight.stabilityScore, rationale: insight.stabilityRationale }

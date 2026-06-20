@@ -10,7 +10,6 @@ function delay(ms: number) {
 
 export async function getAllStockData(): Promise<StockData[]> {
     const CACHE_KEY = 'stock_prices_cache_v1';
-    const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
     // // Try localStorage cache first
     // try {

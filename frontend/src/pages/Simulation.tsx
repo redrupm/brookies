@@ -1,7 +1,7 @@
 import { useEffect, useState, type ChangeEvent } from 'react';
 import { postJson } from '../api/client';
 import { TRENDS_ENDPOINT } from '../api/endpoints';
-import type { PredictionRequest, PredictionResponse } from '../types/api';
+import type { PredictionRequest, TrendPredictionResponse } from '../types/api';
 import topStocks from '../data/top_stocks.json';
 import '../styles/simulation.css';
 import type {
@@ -11,7 +11,7 @@ import type {
   SimulationStock,
   ParsedStocksPayload,
   PortfolioState,
-} from './simulation';
+} from '../types/simulation';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -144,9 +144,10 @@ function normalizeStock(value: unknown): SimulationStock {
 // ─── Portfolio math ───────────────────────────────────────────────────────────
 
 function getPortfolioValue(state: PortfolioState) {
-  return Object.entries(state.sharesByTicker).reduce((sum, [ticker, shares]) => {
-    return sum + shares * (state.latestPrices[ticker] ?? 0);
-  }, 0);
+  return (Object.entries(state.sharesByTicker) as Array<[string, number]>).reduce(
+    (sum, [ticker, shares]) => sum + shares * (state.latestPrices[ticker] ?? 0),
+    0
+  );
 }
 
 // ─── Simulation runner ────────────────────────────────────────────────────────
@@ -173,10 +174,10 @@ async function buildLogs(
 
   for (const date of dates) {
     // Fetch predictions for all stocks on this date
-    const predictions: PredictionResponse[] = [];
+    const predictions: TrendPredictionResponse[] = [];
 
     for (const stock of stocks) {
-      const prediction = await postJson<PredictionResponse, PredictionRequest>(
+      const prediction = await postJson<TrendPredictionResponse, PredictionRequest>(
         TRENDS_ENDPOINT,
         { ticker: stock.ticker, as_of: date }
       );
