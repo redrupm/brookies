@@ -42,7 +42,11 @@ export default function StockDetail() {
     // load simple holdings from localStorage (if used elsewhere)
     try {
       const raw = localStorage.getItem('holdings');
-      if (raw) setHoldings(JSON.parse(raw));
+      if (raw) {
+        setHoldings(JSON.parse(raw));
+      } else {
+        
+      }  
     } catch {
       setHoldings([]);
     }
@@ -113,23 +117,17 @@ export default function StockDetail() {
   if (stockData.metrics.trend?.fallback) {
     trendRationale = `Trend model unavailable; neutral score used${stockData.metrics.trend.warning ? ` (${stockData.metrics.trend.warning})` : ''}`;
   } else {
-    const projectedOpens = Array.isArray(stockData.metrics.trend.projected_opens)
-      ? stockData.metrics.trend.projected_opens.filter(isFiniteNumber)
-      : [];
-    const currentPrice = stockData.metrics.trend.current_price;
-
-    if (!projectedOpens.length || !isFiniteNumber(currentPrice) || currentPrice === 0) {
+    const projectedDirection = stockData.metrics.trend.projected_direction;
+    const confidence = stockData.metrics.trend.confidence;
+    if (!projectedDirection || !confidence) {
       trendRationale = 'Trend model returned incomplete price data.';
     } else {
-      const projectedAverage = projectedOpens.reduce((sum, price) => sum + price, 0) / projectedOpens.length;
-      const percentChange = ((projectedAverage - currentPrice) / currentPrice) * 100;
-      const direction = projectedAverage > currentPrice ? '↑' : '↓';
-      trendRationale = `Trend predicted to go ${direction} ${Math.abs(percentChange).toFixed(2)}% to $${projectedAverage.toFixed(2)} over the next 3 days`;
+      trendRationale = `Trend predicted to go ${projectedDirection} over the next 3 days with a confidence of ${confidence}`;
     }
   }
 
   const displayMetrics = [
-    { name: 'News', score: stockData.metrics.news ?? 0, rationale: 'News sentiment' },
+    { name: 'News', score: stockData.metrics.news.score ?? 0, rationale: stockData.metrics.news.rationale },
     { name: 'Trend', score: trendScore, rationale: trendRationale },
     { name: 'Diversity', score: insight.diversityScore, rationale: insight.diversityRationale },
     { name: 'Stability', score: insight.stabilityScore, rationale: insight.stabilityRationale }

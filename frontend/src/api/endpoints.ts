@@ -7,4 +7,6 @@ export const API_BASE_URL = resolveApiBaseUrl();
 
 export const TRENDS_ENDPOINT = `${API_BASE_URL}/api/trend-prediction`;
 
+export const NEWS_ENDPOINT = `${API_BASE_URL}/api/news-prediction`;
+
 export const PRICES_ENDPOINT = `${API_BASE_URL}/api/prices`;

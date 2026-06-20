@@ -9,8 +9,7 @@ export interface PredictionRequest {
   as_of?: string;
 }
 
-export interface PredictionResponse {
-  projected_opens?: number[];
+export interface TrendPredictionResponse {
   projected_direction: string;
   current_price: number;
   score: number;
@@ -22,4 +21,10 @@ export interface PredictionResponse {
   timestamp?: string;
   fallback?: boolean;
   warning?: string;
+}
+
+export interface NewsPredictionResponse {
+  score: number;
+  confidence: number;
+  reasoning: string;
 }

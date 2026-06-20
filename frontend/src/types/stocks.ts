@@ -24,13 +24,14 @@ export interface PricePoint {
 
 export interface Metrics {
     trend: trendMetric;
-    news: number;
+    news: newsMetric;
     diversity: number;
     stability: number;
 }
 
 export interface trendMetric {
     projected_opens?: number[];
+    projected_direction: string;
     current_price: number;
     score: number;
     confidence: number;
@@ -39,6 +40,12 @@ export interface trendMetric {
     confidence_pct?: number;
     fallback?: boolean;
     warning?: string;
+}
+
+export interface newsMetric {
+    score: number;
+    confidence: number;
+    reasoning: string;
 }
 
 export interface StockPrices {

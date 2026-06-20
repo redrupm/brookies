@@ -16,10 +16,6 @@ FRONTEND_BUILD_DIR = BASE_DIR / "frontend" / "build"
 app = Flask(__name__)
 CORS(app, resources={r"/api/*": {"origins": "*"}})
 
-_trend_model_initialized = False
-_trend_model_error = None
-_trend_module = None
-
 @app.post("/api/prices")
 def get_stock_prices():
     """API endpoint to get stock price data for target stock"""
@@ -61,48 +57,13 @@ def get_trend_prediction():
     if not stock_ticker:
         return jsonify({"error": "Missing ticker or symbol in request body"}), 400
 
-    if not _trend_model_initialized:
-        # Fall back to a neutral prediction instead of crashing the request path.
-        # This keeps portfolio/data screens usable when ML deps are unavailable.
-        try:
-            ticker = yf.Ticker(stock_ticker)
-            history = ticker.history(period="5d", interval="1d")
-            closes = [
-                round(p, 3)
-                for p in history.get("Close", [])
-            ]
-            current_price = closes[-1] if closes else 0.0
-        except Exception:
-            current_price = 0.0
-
-        projected_opens = [current_price, current_price, current_price]
-
-        projectedAverage = sum(projected_opens) / len(projected_opens)
-        percentChange = ((projectedAverage - current_price) / current_price) * 100 if current_price else 0
-        if percentChange > 0:
-            score = percentChange * 175
-            if score > 10:
-                score = 10
-        else:
-            score = 0
-        
-
-        return jsonify({
-            "projected_opens": projected_opens,
-            "current_price": current_price,
-            "score": score,
-            "confidence": 0.0,
-            "fallback": True,
-            "warning": _trend_model_error or "Trend model not initialized",
-        })
-
-     # Get 3-day projections and current price from the loaded module
+    # Get 3-day projections and current price from the loaded module
     result = _trend_module.predict_trend(stock_ticker, as_of=as_of)
     projected_direction = result.get('trend_label', None)
     confidence_pct = result.get('confidence_pct')
     current_price = result.get('current_price')
 
-    # Calculate score
+    # Calculate weighted score
     if (projected_direction == "Up"): # 6.66 to 10
         score = 6.66 + (confidence_pct / 100) * 3.34
         if confidence_pct >= 52.5:
@@ -118,6 +79,38 @@ def get_trend_prediction():
         "current_price": round(current_price, 3),
         "score": round(score, 2),
         "confidence": round(confidence_pct, 2)
+    })
+
+@app.post("/api/news-prediction")
+def get_news_prediction():
+    """API endpoint to get stock news prediction data for target stock"""
+    data = request.get_json()
+    stock_ticker = data.get("ticker")
+    as_of = data.get("as_of")
+
+    if not stock_ticker:
+        return jsonify({"error": "Missing ticker or symbol in request body"}), 400
+
+    news_predictor = globals().get("_news_predictor")
+    if news_predictor is None:
+        return jsonify({"error": "News predictor is not initialized"}), 503
+
+    try:
+        result = news_predictor.predict(stock_ticker, as_of=as_of)
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    except Exception as exc:
+        return jsonify({"error": f"News prediction failed: {str(exc)}"}), 500
+
+    print(
+        f"News prediction for {stock_ticker}: score={result.score:.2f}, confidence={result.confidence:.2f}, headline={result.rationale}"
+    )
+    return jsonify({
+        "ticker": stock_ticker.upper(),
+        "score": round(result.score, 2),
+        "confidence": round(result.confidence, 2),
+        "rationale": result.rationale,
+        "as_of": as_of,
     })
 
 def _initialize_trend_model():
@@ -148,11 +141,36 @@ def _initialize_trend_model():
         _trend_model_error = f"Failed to initialize trend model: {str(e)}"
         print(f"WARNING: {_trend_model_error}")
 
+def _initialize_news_model():
+    """Initialize the news prediction model from news.py"""
+    global _news_predictor, _news_model_error
+
+    # Add news directory to path so we can import news.py directly
+    news_dir = BASE_DIR / "models"
+    if news_dir not in sys.path:
+        sys.path.insert(0, news_dir)
+
+    try:
+        import news
+        from news import NewsTransformerPredictor
+    except Exception as exc:
+        _news_model_error = f"Failed to import news transformer module: {str(exc)}"
+        print(f"WARNING: {_news_model_error}")
+        return
+
+    predictor = NewsTransformerPredictor(news_dir)
+    _news_predictor = predictor
+    if predictor.is_ready():
+        print("News transformer model initialized successfully")
+        return
+
+    _news_model_error = predictor.load_error or "Unknown news model initialization error."
+    print(f"WARNING: News transformer unavailable; using lexical fallback: {_news_model_error}")
 
 if __name__ == "__main__":
     # Initialize models on startup
     _initialize_trend_model()
-    # _initialize_news_model()
+    _initialize_news_model()
     # if os.getenv("PRECOMPUTE_TRENDS", "0").lower() in {"1", "true", "yes"}:
     #     _compute_trend_predictions()
     

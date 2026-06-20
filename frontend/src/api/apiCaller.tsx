@@ -1,8 +1,8 @@
 import type { StockData, StockPrices } from '../types/stocks';
 import stocks from '../data/test_stocks.json'; //TODO
 import { postJson } from './client';
-import { PRICES_ENDPOINT, TRENDS_ENDPOINT } from './endpoints';
-import type { PredictionRequest, PredictionResponse } from '../types/api';
+import { PRICES_ENDPOINT, TRENDS_ENDPOINT, NEWS_ENDPOINT } from './endpoints';
+import type { PredictionRequest, TrendPredictionResponse, NewsPredictionResponse } from '../types/api';
 
 function delay(ms: number) {
     return new Promise(resolve => setTimeout(resolve, ms));
@@ -60,14 +60,20 @@ export async function getStockData(ticker: string): Promise<StockData> {
             );
 
             // Get trend prediction data
-            const trendPrediction = await postJson<PredictionResponse, PredictionRequest>(
+            const trendPrediction = await postJson<TrendPredictionResponse, PredictionRequest>(
                 TRENDS_ENDPOINT,
+                { ticker: stock.ticker }
+            );
+
+            // Get news prediction data
+            const newsPrediction = await postJson<NewsPredictionResponse, PredictionRequest>(
+                NEWS_ENDPOINT,
                 { ticker: stock.ticker }
             );
             
             // Calculate grade using metrics
             let grade = null;
-            const metricAverage  = trendPrediction.score;
+            const metricAverage  = (trendPrediction.score + newsPrediction.score) / 2;
             if (metricAverage >= 6.66) {
                 grade = 'A';
             } else if (metricAverage >= 3.33) {
@@ -75,7 +81,7 @@ export async function getStockData(ticker: string): Promise<StockData> {
             } else {
                 grade = 'C';
             }
-            return {stock, prices, metrics: { trend: trendPrediction, news: 0, diversity: 0, stability: 0 }, grade};
+            return {stock, prices, metrics: { trend: trendPrediction, news: newsPrediction, diversity: 0, stability: 0 }, grade};
         } catch(err) {
             console.error(`Failed to get trend prediction for ${ticker}:`, err);
         }
