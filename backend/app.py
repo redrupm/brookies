@@ -102,12 +102,13 @@ def get_news_prediction():
     except Exception as exc:
         return jsonify({"error": f"News prediction failed: {str(exc)}"}), 500
 
+    score = (result.score - 2) /4 * 10;
     print(
         f"News prediction for {stock_ticker}: score={result.score:.2f}, confidence={result.confidence:.2f}, headline={result.rationale}"
     )
     return jsonify({
         "ticker": stock_ticker.upper(),
-        "score": round(result.score, 2),
+        "score": round(score, 2),
         "confidence": round(result.confidence, 2),
         "rationale": result.rationale,
         "as_of": as_of,

@@ -3,7 +3,6 @@ import { postJson } from '../api/client';
 import { TRENDS_ENDPOINT } from '../api/endpoints';
 import type { PredictionRequest, TrendPredictionResponse } from '../types/api';
 import topStocks from '../data/top_stocks.json';
-import '../styles/simulation.css';
 import type {
   SimulationChoice,
   SimulationLog,

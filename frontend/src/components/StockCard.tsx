@@ -1,59 +1,79 @@
-import { Link } from 'react-router-dom';
 import type { StockCardData } from '../types/stocks';
-import StockPriceChart from './StockPriceChart';
+import {
+  ComposedChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  CartesianGrid,
+  Area            
+} from "recharts";
+import type { TooltipProps } from "recharts";
+import '../styles/StockCard.css';
+import {CustomTooltip} from './StockCardCompact';
+
 
 export default function StockCard(stockCard: StockCardData) {
-  const stockData = stockCard.stockData;
-  const stock = stockData.stock;
-  let prices = null;
-  if (stockCard.label === '1D'){
-    prices = stockData.prices['1D']
-  } else if (stockCard.label == '5D'){
-    prices = stockData.prices['5D']
-  } else if (stockCard.label == '1M'){
-    prices = stockData.prices['1M']
-  } else if (stockCard.label == '6M'){
-    prices = stockData.prices['6M']
-  } else {
-    prices = stockData.prices['1Y']
-  }
-  if(!prices || prices.length === 0){
-    console.log(`No price data available for ${stock.ticker} with label ${stockCard.label}`);
-    return null;
-  }
-  const lastPrice = prices[prices.length - 1]?.close ?? 0;
-  const changePercent = ((lastPrice - prices[0].close) / (prices[0].close || 1)) * 100; 
-  const changeTone = changePercent >= 0 ? 'change-positive' : 'change-negative';
-
-  return (
-    <Link to={`/stock/${stockData.stock.ticker}`} className="stock-card">
-      <div className="stock-card-top">
-        <div>
-          <p className="stock-symbol">{stock.ticker}</p>
-          <p className="stock-name">{stock.companyName}</p>
+    const stockData = stockCard.stockData;
+    const stock = stockData.stock;
+    let prices = null;
+    if (stockCard.label === '1D'){
+        prices = stockData.prices['1D']
+    } else if (stockCard.label == '5D'){
+        prices = stockData.prices['5D']
+    } else if (stockCard.label == '1M'){
+        prices = stockData.prices['1M']
+    } else if (stockCard.label == '6M'){
+        prices = stockData.prices['6M']
+    } else {
+        prices = stockData.prices['1Y']
+    }
+    if(!prices || prices.length === 0){
+        console.log(`No price data available for ${stock.ticker} with label ${stockCard.label}`);
+        return null;
+    }
+    const lastPrice = prices[prices.length - 1]?.close ?? 0;
+    const changePercent = ((lastPrice - prices[0].close) / (prices[0].close || 1)) * 100; 
+    const changeTone = changePercent >= 0 ? 'stockPercentPositive' : 'stockPercentNegative';
+    changeTone.toString();
+    return (
+        <div className="stockChart">
+            <ResponsiveContainer>
+                <ComposedChart data={prices} margin={{ top: 10, right: 15, left: -25, bottom: 15 }}>
+                <defs>
+                    <linearGradient id="lineGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#2855c6" stopOpacity={0.8} />
+                    <stop offset="100%" stopColor="#1b47b6" stopOpacity={0} />
+                    </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.25}/>
+                <XAxis dataKey="label" />
+                <YAxis hide={false}
+                    tick={{ fill: "rgba(255,255,255,0.55)", fontSize: 11 }}
+                    tickFormatter={(value) => Math.round(value).toString()}
+                    tickLine={false}
+                    axisLine={{ stroke: "rgba(255,255,255,0.15)", strokeWidth: 1 }}
+                    domain={["dataMin - 1", "dataMax + 1"]} />
+                <Tooltip content={<CustomTooltip />} />
+                <Area
+                    type="monotone"
+                    dataKey="close"
+                    stroke="none"
+                    fill="url(#lineGradient)"
+                    fillOpacity={1}
+                    activeDot={{ r: 6 }}
+                    isAnimationActive={false}
+                />
+                <Line
+                    type="monotone"
+                    dataKey="close"
+                    stroke="#4876e8"
+                    strokeWidth={1.75}
+                    dot={false}
+                />
+                </ComposedChart>
+            </ResponsiveContainer>
         </div>
-        <span className={`grade-badge ${stockCard.grade.toLowerCase()}`}>{stockCard.grade}</span>
-      </div>
-
-      {/* <p className="stock-subtitle">{subtitle}</p>
-      {detailLines?.length ? (
-        <div className="stock-card-details">
-          {detailLines.map((line) => (
-            <span key={line} className="stock-card-detail">
-              {line}
-            </span>
-          ))}
-        </div>
-      ) : null} */}
-      <StockPriceChart data={prices} compact />
-
-      <div className="stock-card-bottom">
-        <p>${lastPrice.toFixed(2)}</p>
-        <p className={changeTone}>
-          {changePercent >= 0 ? '+' : ''}
-          {changePercent.toFixed(2)}%
-        </p>
-      </div>
-    </Link>
-  );
-}
+    );
+}    

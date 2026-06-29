@@ -69,6 +69,9 @@ export async function getStockData(ticker: string): Promise<StockData> {
                 NEWS_ENDPOINT,
                 { ticker: stock.ticker }
             );
+
+            // Get diversity score
+            
             
             // Calculate grade using metrics
             let grade = null;

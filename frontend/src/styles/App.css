@@ -1,0 +1,79 @@
+@import url(index.css);
+.app {
+  display: flex;
+  flex-direction: column;
+}
+
+.navbar {
+  background-color: var(--background-color);
+  border-bottom: 1px solid var(--navbar-color);
+  position: static;
+  top: 0;
+  left: 0;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  overflow: visible;
+  p {
+    color: var(--secondary-color);
+    letter-spacing: 2px;
+    font-size: 18px;
+    padding: 0 25px;
+  }
+  nav {
+    padding: 5px 20px;
+    display: flex;
+    flex-direction: row;
+    gap: 7.5px;
+    height: 30px;
+    align-items: center;
+  }
+  nav a {
+    color: var(--text-color);
+    text-decoration: none;
+    padding: 5px 15px;
+    border-radius: 10px;
+    position: relative;
+    transition: color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .active {
+    color: var(--primary-color);
+  }
+
+  nav a::after {
+    content: '';
+    position: absolute;
+    bottom: -0.5px; 
+    left: 12.5%;
+    width: 75%;
+    height: 2.5px;
+    background-color: var(--primary-color);
+    border-radius: 10px;
+    transform: scaleX(0);
+    transform-origin: center; 
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  nav a:hover::after,
+  nav a.active::after {
+    transform: scaleX(1);
+  }
+  nav a:hover,
+  nav a.active {
+    color: var(--primary-color);
+    .profileIcon {
+      background-image: url('../assets/profileIconPurple.png');
+    }
+  }
+}
+
+.profileIcon {
+  height: 24px;
+  width: 24px;
+  align-self: center;
+  padding-bottom: 0;
+  background-image: url('../assets/profileIconWhite.png');
+  background-size: cover;
+  background-position: center;
+}

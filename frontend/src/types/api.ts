@@ -26,5 +26,5 @@ export interface TrendPredictionResponse {
 export interface NewsPredictionResponse {
   score: number;
   confidence: number;
-  reasoning: string;
+  rationale: string;
 }

@@ -4,12 +4,14 @@ import Portfolio from "./pages/Portfolio";
 import StockDetail from "./pages/StockDetail";
 import Help from "./pages/Help";
 import Simulation from "./pages/Simulation";
+import Profile from "./pages/Profile";
+import './styles/App.css';
 
 export default function App() {
   return (
-      <div className="app-shell">
-        <header className="top-bar">
-          <p className="brand-mark">AI INVESTMENT HELPER</p>
+      <div className="app">
+        <header className="navbar">
+          <p>BROOKIES</p>
           <nav>
             <NavLink to="/" end>
               Dashboard
@@ -21,6 +23,7 @@ export default function App() {
               Simulation
             </NavLink>
             <NavLink to="/help">Help</NavLink>
+            <NavLink to="/profile"><div className="profileIcon"/></NavLink>
           </nav>
         </header>
 
@@ -31,6 +34,7 @@ export default function App() {
             <Route path="/simulation" element={<Simulation />} />
             <Route path="/stock/:symbol" element={<StockDetail />} />
             <Route path="/help" element={<Help />} />
+            <Route path="/profile" element={<Profile />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
