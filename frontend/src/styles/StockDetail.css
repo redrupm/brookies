@@ -1,0 +1,53 @@
+.stockDetailPage {
+    padding: 0 32px;
+}
+
+.stockTicker {
+    color: var(--secondary-color);
+    font-size: 40px;
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+
+.stockCompanyDetails {
+    margin: auto 0;
+    color: var(--text-color);
+}
+
+.dateLabels {
+    display: flex;
+    flex-direction: row;
+    button {
+        background-color: transparent;
+        border: 2px solid var(--primary-color);
+        color: var(--text-color);
+        border-radius: 6px;
+        padding: 5px;
+        margin: 0 3px;
+    }
+    button:hover {
+        cursor: pointer;
+        background-color: var(--primary-color);
+    }
+    button.active {
+        background-color: var(--primary-color);
+    }
+}
+
+.dateLabelContainer {
+    display: flex;
+    flex-direction: row;
+    justify-content: end;
+}
+
+.dateLabelTitle {
+    text-align: center;
+    margin: auto 5px;
+    color: var(--text-color);
+}
+
+.stockTitlePlacement {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+}

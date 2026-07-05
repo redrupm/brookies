@@ -7,7 +7,6 @@ export interface StockData {
 
 export interface StockCardData {
     stockData: StockData;
-    grade: string;
     label: string;
 }
 
@@ -45,7 +44,7 @@ export interface trendMetric {
 export interface newsMetric {
     score: number;
     confidence: number;
-    reasoning: string;
+    rationale: string;
 }
 
 export interface StockPrices {

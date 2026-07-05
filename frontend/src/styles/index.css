@@ -1,12 +1,23 @@
-/* Global Styles */
-@import './globals.css';
-@import './layout.css';
-@import './panel.css';
-@import './forms.css';
+:root {
+  --background-color: #292c39;
+  --navbar-color: #35354c;
+  --primary-color: #9466fe;
+  --secondary-color: #c680a6;
+  --text-color: #E8ECF5;
+  --green-color: #4bab4e;
+  --bright-green-color: #54b758;
+  --red-color: #cf3d3d;
+  --bright-red-color: #eb5656;
+  --yellow-color: #e38629;
+  --bright-yellow-color: #d59e38;
+}
 
-/* Component Styles */
-@import './stock-card.css';
-@import './portfolio.css';
-@import './stock-detail.css';
-@import './metrics.css';
-@import './help.css';
+body {
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    background: linear-gradient(var(--navbar-color), var(--background-color));
+    height: 200vh;
+    font-family: ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, Consolas, 'DejaVu Sans Mono', monospace;
+}
