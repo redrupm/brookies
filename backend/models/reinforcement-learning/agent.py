@@ -1,111 +1,206 @@
-import torch
-from torch import nn
+import os
 import numpy as np
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.distributions import Normal
 
-from tensordict import TensorDict
-from torchrl.data import TensorDictReplayBuffer, LazyMemmapStorage
+class PPOMemory:
+    def __init__(self, batch_size):
+        self.states = []
+        self.probs = []
+        self.vals = []
+        self.actions = []
+        self.rewards = []
+        self.dones = []
 
-class AgentNN(nn.Module):
-    def __init__(self, input_size, n_actions, freeze=False):
-        super().__init__()
+        self.batch_size = batch_size
 
-        self.network = nn.Sequential(
-            nn.Flatten(), # TODO: Needed?
-            nn.Linear(input_size, 512),
+    def generate_batches(self):
+        n_states = len(self.states)
+        batch_start = np.arange(0, n_states, self.batch_size)
+        indices = np.arange(n_states, dtype=np.int64)
+        np.random.shuffle(indices)
+        batches = [indices[i : i + self.batch_size] for i in batch_start]
+        
+        return (np.array(self.states),
+                np.array(self.actions),
+                np.array(self.probs),
+                np.array(self.vals),
+                np.array(self.rewards),
+                np.array(self.dones),
+                batches
+        )
+    
+    def store_memory(self, state, action, probs, vals, reward, done):
+        self.states.append(state)
+        self.actions.append(action)
+        self.probs.append(probs)
+        self.vals.append(vals)
+        self.rewards.append(reward)
+        self.dones.append(done)
+
+    def clear_memory(self):
+        self.states = []
+        self.probs = []
+        self.vals = []
+        self.actions = []
+        self.rewards = []
+        self.dones = []
+
+class ActorNetwork(nn.Module):
+    def __init__(self, n_actions, input_dim, alpha,
+                fc1_dims=256, fc2_dims=246,
+                chkpt_dir='backend\\models\\reinforcement-learning\\models'):
+        super(ActorNetwork, self).__init__()
+
+        self.checkpoint_file = os.path.join(chkpt_dir, 'actor_torch_ppo')
+
+        self.actor = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(input_dim, fc1_dims),
             nn.ReLU(),
-            nn.Linear(512, n_actions)
+            nn.Linear(fc1_dims, fc2_dims),
+            nn.ReLU(),
+            nn.Linear(fc2_dims, n_actions)
         )
 
-        if freeze:
-            self._freeze()
+        self.action_std = nn.Parameter(torch.zeros(n_actions))
 
-        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        self.optimizer = optim.Adam(self.parameters(), lr=alpha)
+        self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
         self.to(self.device)
 
+    def forward(self, state):
+        action_mean = self.actor(state)
+        action_var = self.action_std.exp().expand_as(action_mean)
+        
+        dist = Normal(action_mean, action_var)
 
-    def _freeze(self):
-        for p in self.network.parameters():
-            p.requires_grad = False
-
-    def forward(self, x):
-        return self.network(x)
+        return dist
     
+    def save_checkpoint(self):
+        torch.save(self.state_dict(), self.checkpoint_file)
+
+    def load_checkpoint(self):
+        self.load_state_dict(torch.load(self.checkpoint_file))
+
+
+class CriticNetwork(nn.Module):
+    def __init__(self, input_dim, alpha,
+                fc1_dims=256, fc2_dims=246,
+                chkpt_dir='backend\\models\\reinforcement-learning\\models'):
+        super(CriticNetwork, self).__init__()
+
+        self.checkpoint_file = os.path.join(chkpt_dir, 'critic_torch_ppo')
+
+        self.critic = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(input_dim, fc1_dims),
+            nn.ReLU(),
+            nn.Linear(fc1_dims, fc2_dims),
+            nn.ReLU(),
+            nn.Linear(fc2_dims, 1)
+        )
+
+        self.optimizer = optim.Adam(self.parameters(), lr=alpha)
+        self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+        self.to(self.device)
+
+    def forward(self, state):
+        return self.critic(state)
+    
+    def save_checkpoint(self):
+        torch.save(self.state_dict(), self.checkpoint_file)
+
+    def load_checkpoint(self):
+        self.load_state_dict(torch.load(self.checkpoint_file))
+
 
 class Agent:
-    def __init__(self, input_dims, num_actions):
-        self.num_actions = num_actions
-        self.learn_step_counter = 0
+    def __init__(self, input_dim, n_actions, gamma=0.99, alpha=0.0003, gae_lambda=0.95,
+                 policy_clip=0.2, batch_size=64, N=2048, n_epochs=10):
+        # N= horizon. The number of steps before update?
+        self.gamma = gamma
+        self.policy_clip = policy_clip
+        self.n_epochs = n_epochs
+        self.gae_lambda = gae_lambda
 
-        # Hyperparameters
-        self.lr = 0.00025
-        self.gamma = 0.9
-        self.epsilon = 1.0
-        self.eps_decay = 0.99999975
-        self.eps_min = 0.1
-        self.batch_size = 32
-        self.sync_network_rate = 10_000
+        self.actor = ActorNetwork(n_actions, input_dim, alpha)
+        self.critic = CriticNetwork(input_dim, alpha)
+        self.memory = PPOMemory(batch_size)
 
-        # Networks
-        self.online_network = AgentNN(input_dims, num_actions)
-        self.target_network = AgentNN(input_dims, num_actions, freeze=True)
+    def remember(self, state, action, probs, vals, reward, done):
+        self.memory.store_memory(state, action, probs, vals, reward, done)
 
-        # Optimizer and loss
-        self.optimizer = torch.optim.Adam(self.online_network.parameters(), lr=self.lr)
-        self.loss = torch.nn.MSELoss()
-
-        # Replay buffer
-        replay_buffer_capacity = 100_000
-        storage = LazyMemmapStorage(replay_buffer_capacity)
-        self.replay_bufffer = TensorDictReplayBuffer(storage=storage)
-
+    def save_models(self):
+        print('... saving models ...')
+        self.actor.save_checkpoint()
+        self.critic.save_checkpoint()
+    
+    def load_models(self):
+        print('... loading models ...')
+        self.actor.load_checkpoint()
+        self.critic.load_checkpoint()
 
     def choose_actions(self, observation):
-        if np.random.random() < self.epsilon:
-            return np.random.uniform(-5.0, 5.0, size=(self.num_actions,))
-        observation = torch.tensor(np.array(observation), dtype=torch.float32) \
-                            .unsqueeze(0) \
-                            .to(self.online_network.device)
-        return self.online_network(observation).squeeze().detach().cpu().numpy()
+        state = torch.tensor([observation], dtype=torch.float).to(self.actor.device)
 
-    def decay_epsilon(self):
-        self.epsilon = max(self.epsilon * self.eps_decay, self.eps_min)
+        dist = self.actor(state)
+        value = self.critic(state)
+        action = dist.sample()
+
+        probs = torch.squeeze(dist.log_prob(action).sum(dim=-1)).item()
+        action = torch.squeeze(action).detach().cpu().numpy()
+        value = torch.squeeze(value).item()
+
+        return action, probs, value
     
-    def store_in_memory(self, state, action, reward, next_state, done):
-        self.replay_bufffer.add(TensorDict({
-            "state": torch.tensor(np.array(state), dtype=torch.float32),
-            "action": torch.tensor(action),
-            "reward": torch.tensor(reward),
-            "next_state": torch.tensor(np.array(next_state), dtype=torch.float32),
-            "done": torch.tensor(done)
-        }, batch_size=[]))
-
-    def sync_networks(self):
-        if self.learn_step_counter % self.sync_network_rate == 0 and self.learn_step_counter > 0:
-            self.target_network.load_state_dict(self.online_network.state_dict())
-
     def learn(self):
-        if len(self.replay_buffer) < self.batch_size:
-            return
-        
-        self.sync_networks()
+        for _ in range(self.n_epochs):
+            state_arr, action_arr, old_probs_arr, vals_arr,\
+            reward_arr, dones_arr, batches = self.memory.generate_batches()
 
-        self.optimizer.zero_grad()
+            values = vals_arr
+            advantage = np.zeros(len(reward_arr), dtype=np.float32)
+             
+            for t in range(len(reward_arr) - 1):
+                discount = 1
+                advantage_at_timestep = 0
+                for k in range(t, len(reward_arr) - 1):
+                    delta_t = reward_arr[k] + self.gamma * values[k + 1] * (1 - int(dones_arr[k])) - values[k]
+                    advantage_at_timestep += discount * delta_t
+                    discount *= self.gamma * self.gae_lambda
+                advantage[t] = advantage_at_timestep
+            advantage = torch.tensor(advantage).to(self.actor.device)
 
-        samples = self.replay_bufffer.sample(self.batch_size).to(self.online_network.device)
+            values = torch.tensor(values).to(self.actor.device)
+            # TODO: something about vals array is inefficient?
+            for batch in batches:
+                states = torch.tensor(state_arr[batch], dtype=torch.float).to(self.actor.device)
+                old_probs = torch.tensor(old_probs_arr[batch]).to(self.actor.device)
+                actions = torch.tensor(action_arr[batch]).to(self.actor.device)
 
-        keys = ("state", "action", "reward", "next_state", "done")
+                dist = self.actor(states)
+                critc_value = self.critic(states)
 
-        states, actions, rewards, next_states, dones = [samples[key] for key in keys]
+                critic_value = torch.squeeze(critc_value)
 
-        predicted_q_values = self.online_network(states)
-        predicted_q_values = predicted_q_values[np.arange(self.batch_size), actions.squeeze()]
+                new_probs = dist.log_prob(actions).sum(dim=-1)
+                prob_ratio = (new_probs - old_probs).exp()
+                weighted_probs = advantage[batch] * prob_ratio
+                weighted_clipped_probs = torch.clamp(prob_ratio, 1 - self.policy_clip,
+                                                     1 + self.policy_clip) * advantage[batch]
+                actor_loss = -torch.min(weighted_probs, weighted_clipped_probs).mean()
 
-        target_q_values = self.target_network(next_states).max(dim=1)[0]
-        target_q_values = rewards + self.gamma * target_q_values * (1 - dones.float())
+                returns = advantage[batch] + values[batch]
+                critic_loss = (returns - critic_value)**2
+                critic_loss = critic_loss.mean()
 
-        loss = self.loss(predicted_q_values, target_q_values)
-        loss.backward()
-        self.optimizer.step()
-        
-        self.learn_step_counter += 1
-        self.decay_epsilon()
+                total_loss = actor_loss + 0.5*critic_loss
+                self.actor.optimizer.zero_grad()
+                self.critic.optimizer.zero_grad()
+                total_loss.backward()
+                self.actor.optimizer.step()
+                self.critic.optimizer.step()
+        self.memory.clear_memory()
