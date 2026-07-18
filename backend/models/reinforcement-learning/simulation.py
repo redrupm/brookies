@@ -55,8 +55,6 @@ class DynamicSlotTradingEnv(gym.Env):
         self.portfolio_value = self.initial_balance
         self.holdings = np.zeros(self.max_slots, dtype=np.float32)
         
-        # Reset the data feed to the first day and build the first observation
-        self.data_feed.reset()
         obs = self._build_observation()
         
         return obs, {}
@@ -110,7 +108,7 @@ class DynamicSlotTradingEnv(gym.Env):
         
         # 6. Advance Time
         self.current_step += 1
-        done = self.data_feed.is_done()
+        done = self.current_step >= self.data_feed.max_steps
         
         # 7. Rebuild the Dynamic Slot Buffer for the next step
         obs = self._build_observation()

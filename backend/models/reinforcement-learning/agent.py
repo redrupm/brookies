@@ -3,7 +3,7 @@ from torch import nn
 import numpy as np
 
 from tensordict import TensorDict
-from torchrl.data import TensoreDictReplayBuffer, LazyMemmapStorage
+from torchrl.data import TensorDictReplayBuffer, LazyMemmapStorage
 
 class AgentNN(nn.Module):
     def __init__(self, input_size, n_actions, freeze=False):
@@ -59,13 +59,13 @@ class Agent:
         self.replay_bufffer = TensorDictReplayBuffer(storage=storage)
 
 
-    def choose_action(self, observation):
+    def choose_actions(self, observation):
         if np.random.random() < self.epsilon:
-            return np.random.randint(self.num_actions)
+            return np.random.uniform(-5.0, 5.0, size=(self.num_actions,))
         observation = torch.tensor(np.array(observation), dtype=torch.float32) \
                             .unsqueeze(0) \
                             .to(self.online_network.device)
-        return self.online_network(observation).argmax().item()     
+        return self.online_network(observation).squeeze().detach().cpu().numpy()
 
     def decay_epsilon(self):
         self.epsilon = max(self.epsilon * self.eps_decay, self.eps_min)
@@ -75,7 +75,7 @@ class Agent:
             "state": torch.tensor(np.array(state), dtype=torch.float32),
             "action": torch.tensor(action),
             "reward": torch.tensor(reward),
-            "next_state": torch.tensor(np.array(next_state), dtype=torch.float32)
+            "next_state": torch.tensor(np.array(next_state), dtype=torch.float32),
             "done": torch.tensor(done)
         }, batch_size=[]))
 

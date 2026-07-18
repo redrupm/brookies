@@ -79,6 +79,12 @@ def process_single_ticker(ticker):
         if df.empty:
             return None
             
+        # --- CRITICAL FIX: Flatten yfinance MultiIndex ---
+        # yfinance now returns columns like ('Close', 'AAPL').
+        # We strip out the ticker level so all dataframes match perfectly.
+        if isinstance(df.columns, pd.MultiIndex):
+            df.columns = df.columns.get_level_values(0)
+            
         df = df.reset_index()
         df['Ticker'] = ticker
         
