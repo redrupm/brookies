@@ -1,1 +1,2 @@
 - Start the agent with many different initial states
+- Make the NN temporal. (LSTM?)

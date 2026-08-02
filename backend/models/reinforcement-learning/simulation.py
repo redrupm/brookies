@@ -18,7 +18,6 @@ class DynamicSlotTradingEnv(gym.Env):
         self.initial_balance = initial_balance
         self.transaction_fee = transaction_fee_bps / 10000.0
         
-        # Your pre-computed Parquet data pipeline (mocked here)
         self.data_feed = data_feed 
         
         # Action Space: 51 continuous values (Logits). The env applies Softmax.
@@ -72,13 +71,13 @@ class DynamicSlotTradingEnv(gym.Env):
         # 2. Get current prices for the actively mapped slots
         current_prices = self._get_current_prices(self.active_tickers)
         
-        # Calculate current portfolio value before trades
+        # Calculate current market value before trades
         stock_value = np.sum(self.holdings * current_prices)
-        self.portfolio_value = self.cash + stock_value
+        current_market_value = self.cash + stock_value # FIX: Renamed from self.portfolio_value
         
         # 3. Calculate target dollar allocations
-        target_cash_dollars = self.portfolio_value * target_cash_weight
-        target_stock_dollars = self.portfolio_value * target_stock_weights
+        target_cash_dollars = current_market_value * target_cash_weight # FIX
+        target_stock_dollars = current_market_value * target_stock_weights # FIX
         
         # 4. Execute Trades & Apply Friction
         # We calculate the difference between target dollars and current dollars for each slot
@@ -103,6 +102,7 @@ class DynamicSlotTradingEnv(gym.Env):
         new_portfolio_value = self.cash + np.sum(self.holdings * current_prices)
         
         # 5. Calculate Reward (Log Return)
+        # FIX: Now correctly compares today's post-trade value against YESTERDAY'S value
         reward = np.log(new_portfolio_value / self.portfolio_value)
         self.portfolio_value = new_portfolio_value
         

@@ -56,25 +56,41 @@ class ActorNetwork(nn.Module):
 
         self.checkpoint_file = os.path.join(chkpt_dir, 'actor_torch_ppo')
 
-        self.actor = nn.Sequential(
-            nn.Flatten(),
-            nn.Linear(input_dim, fc1_dims),
-            nn.ReLU(),
-            nn.Linear(fc1_dims, fc2_dims),
-            nn.ReLU(),
-            nn.Linear(fc2_dims, n_actions)
+        self.embedding = nn.Linear(5, 64)
+        
+        self.attention = nn.TransformerEncoderLayer(
+            d_model=64, 
+            nhead=4, 
+            dim_feedforward=128, 
+            batch_first=True
         )
+        
+        # Output the final logit for the stock based on its contextualized data
+        self.logit_head = nn.Linear(64, 1)
 
-        self.action_std = nn.Parameter(torch.zeros(n_actions))
+        # Standalone learnable logit for the "Cash" position
+        self.cash_logit = nn.Parameter(torch.zeros(1))
+
+        self.action_std = nn.Parameter(torch.full((n_actions,), -1.5))
 
         self.optimizer = optim.Adam(self.parameters(), lr=alpha)
         self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
         self.to(self.device)
 
     def forward(self, state):
-        action_mean = self.actor(state)
-        action_var = self.action_std.exp().expand_as(action_mean)
+        # state shape: [batch_size, 50, 5]
         
+        x = self.embedding(state)    # shape: [batch_size, 50, 64]
+        x = self.attention(x)        # shape: [batch_size, 50, 64] (Now context-aware!)
+        
+        stock_logits = self.logit_head(x).squeeze(-1) # shape: [batch_size, 50]
+        
+        batch_size = state.shape[0]
+        cash_logits = self.cash_logit.expand(batch_size, 1)
+        
+        action_mean = torch.cat([cash_logits, stock_logits], dim=-1)
+        
+        action_var = self.action_std.exp().expand_as(action_mean)
         dist = Normal(action_mean, action_var)
 
         return dist
@@ -94,13 +110,20 @@ class CriticNetwork(nn.Module):
 
         self.checkpoint_file = os.path.join(chkpt_dir, 'critic_torch_ppo')
 
-        self.critic = nn.Sequential(
-            nn.Flatten(),
-            nn.Linear(input_dim, fc1_dims),
+        self.embedding = nn.Linear(5, 64)
+        
+        self.attention = nn.TransformerEncoderLayer(
+            d_model=64, 
+            nhead=4, 
+            dim_feedforward=128, 
+            batch_first=True
+        )
+        
+        # After understanding the whole market, it boils it down to 1 dollar value estimate
+        self.value_head = nn.Sequential(
+            nn.Linear(64, 64),
             nn.ReLU(),
-            nn.Linear(fc1_dims, fc2_dims),
-            nn.ReLU(),
-            nn.Linear(fc2_dims, 1)
+            nn.Linear(64, 1)
         )
 
         self.optimizer = optim.Adam(self.parameters(), lr=alpha)
@@ -108,7 +131,15 @@ class CriticNetwork(nn.Module):
         self.to(self.device)
 
     def forward(self, state):
-        return self.critic(state)
+        # state shape: [batch_size, 50, 5]
+        x = self.embedding(state)
+        x = self.attention(x)
+        
+        # Mean Pooling: Average the context of all 50 stocks into a single global market view
+        global_context = x.mean(dim=1) # shape: [batch_size, 64]
+        
+        value = self.value_head(global_context)
+        return value
     
     def save_checkpoint(self):
         torch.save(self.state_dict(), self.checkpoint_file)
@@ -121,6 +152,7 @@ class Agent:
     def __init__(self, input_dim, n_actions, gamma=0.99, alpha=0.0003, gae_lambda=0.95,
                  policy_clip=0.2, batch_size=64, N=2048, n_epochs=10):
         # N= horizon. The number of steps before update?
+        # TODO: N is never used?
         self.gamma = gamma
         self.policy_clip = policy_clip
         self.n_epochs = n_epochs
@@ -143,12 +175,18 @@ class Agent:
         self.actor.load_checkpoint()
         self.critic.load_checkpoint()
 
-    def choose_actions(self, observation):
+    def choose_actions(self, observation, explore=True):
         state = torch.tensor([observation], dtype=torch.float).to(self.actor.device)
 
         dist = self.actor(state)
         value = self.critic(state)
-        action = dist.sample()
+        
+        if explore:
+            # Stochastic: Pick a random point under the bell curve
+            action = dist.sample()
+        else:
+            # Deterministic: Take the exact center of the bell curve (the network's raw prediction)
+            action = dist.mean 
 
         probs = torch.squeeze(dist.log_prob(action).sum(dim=-1)).item()
         action = torch.squeeze(action).detach().cpu().numpy()
