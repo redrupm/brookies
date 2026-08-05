@@ -9,7 +9,7 @@ class DynamicSlotTradingEnv(gym.Env):
     Observation Space: 50 active slots x N features.
     """
     
-    def __init__(self, data_feed, initial_balance=10000.0, transaction_fee_bps=5):
+    def __init__(self, data_feed, initial_balance=10000.0, transaction_fee_bps=5, history_size=5):
         super().__init__()
         
         # Configuration
@@ -17,6 +17,7 @@ class DynamicSlotTradingEnv(gym.Env):
         self.num_features = 5 # e.g., Norm_Price, Score, Confidence, Direction, Pct_Owned
         self.initial_balance = initial_balance
         self.transaction_fee = transaction_fee_bps / 10000.0
+        self.history_size = history_size
         
         self.data_feed = data_feed 
         
@@ -32,7 +33,7 @@ class DynamicSlotTradingEnv(gym.Env):
         self.observation_space = spaces.Box(
             low=-np.inf, 
             high=np.inf, 
-            shape=(self.max_slots, self.num_features), 
+            shape=(self.max_slots, (self.num_features - 1) * self.history_size + 1), 
             dtype=np.float32
         )
         
@@ -128,7 +129,7 @@ class DynamicSlotTradingEnv(gym.Env):
         Priority 1: Stocks currently owned.
         Priority 2: Top screener ideas for the current day.
         """
-        obs = np.zeros((self.max_slots, self.num_features), dtype=np.float32)
+        obs = np.zeros((self.max_slots, (self.num_features - 1) * self.history_size + 1), dtype=np.float32)
         next_active_tickers = []
         next_holdings = np.zeros(self.max_slots, dtype=np.float32)
         
@@ -139,19 +140,26 @@ class DynamicSlotTradingEnv(gym.Env):
             if self.holdings[i] > 0: # Agent owns shares
                 next_active_tickers.append(ticker)
                 next_holdings[slot_index] = self.holdings[i]
-                
-                # Fetch features from data pipeline
-                features = self.data_feed.get_features(ticker, self.current_step)
-                
+
+                temp_obs = []
+
+                for s in range(self.current_step - self.history_size + 1, self.current_step + 1):
+                    # Fetch features from data pipeline
+                    features = self.data_feed.get_features(ticker, max(s, 0))
+                    
+                    
+                    temp_obs += [
+                        features['norm_price'], 
+                        features['score'], 
+                        features['confidence'], 
+                        features['direction']
+                    ]
+
                 # Append the "Percent Owned" feature to the state
+                features = self.data_feed.get_features(ticker, self.current_step)
                 pct_owned = (self.holdings[i] * features['price']) / self.portfolio_value
-                obs[slot_index] = [
-                    features['norm_price'], 
-                    features['score'], 
-                    features['confidence'], 
-                    features['direction'], 
-                    pct_owned
-                ]
+
+                obs[slot_index] = temp_obs + [pct_owned] # TODO: Does this make sense here?
                 slot_index += 1
                 
         # -- PRIORITY 2: Fill remaining slots with new screener ideas --
@@ -164,15 +172,18 @@ class DynamicSlotTradingEnv(gym.Env):
                 
             if ticker not in next_active_tickers:
                 next_active_tickers.append(ticker)
-                
-                features = self.data_feed.get_features(ticker, self.current_step)
-                obs[slot_index] = [
-                    features['norm_price'], 
-                    features['score'], 
-                    features['confidence'], 
-                    features['direction'], 
-                    0.0 # Percent owned is 0
-                ]
+
+                temp_obs = []
+
+                for i in range(self.current_step - self.history_size + 1, self.current_step + 1):
+                    features = self.data_feed.get_features(ticker, max(i, 0))
+                    temp_obs += [
+                        features['norm_price'], 
+                        features['score'], 
+                        features['confidence'], 
+                        features['direction']
+                    ]
+                obs[slot_index] = temp_obs + [0.0]
                 slot_index += 1
                 
         # Update internal tracking arrays
@@ -183,4 +194,8 @@ class DynamicSlotTradingEnv(gym.Env):
         
     def _get_current_prices(self, tickers):
         # Helper to extract an array of current prices for the active slots
+        # prices = []
+        # for t in tickers:
+        #     prices += [self.data_feed.get_price(t, self.current_step) for d in range(self.current_step - self.history_size, self.current_step + 1)]
+        # return np.array(prices, dtype=np.float32)
         return np.array([self.data_feed.get_price(t, self.current_step) for t in tickers], dtype=np.float32)

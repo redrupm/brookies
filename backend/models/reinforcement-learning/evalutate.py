@@ -69,12 +69,14 @@ from agent import Agent
 
 NUM_EPISODES = 5000
 N = 20
+BATCH_SIZE = 128
 
 feed = StockDataFeed(DATA_DIR + "testing_feed.parquet")
 
 env = DynamicSlotTradingEnv(data_feed=feed, initial_balance=10000.0)
+print(env.observation_space.shape)
 
-agent = Agent(input_dim=250, n_actions=51, N=N) # TODO: env.observation_space.shape?
+agent = Agent(num_features=env.observation_space.shape[1], n_actions=51, N=N, batch_size=BATCH_SIZE, history_size=5)
 
 best_score = -10000 # env.reward_range[0]??
 score_history = []

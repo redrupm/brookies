@@ -49,14 +49,14 @@ class PPOMemory:
         self.dones = []
 
 class ActorNetwork(nn.Module):
-    def __init__(self, n_actions, input_dim, alpha,
+    def __init__(self, n_actions, num_features, alpha,
                 fc1_dims=256, fc2_dims=246,
-                chkpt_dir='backend\\models\\reinforcement-learning\\models'):
+                chkpt_dir='backend\\models\\reinforcement-learning\\models', history_size=5):
         super(ActorNetwork, self).__init__()
 
         self.checkpoint_file = os.path.join(chkpt_dir, 'actor_torch_ppo')
 
-        self.embedding = nn.Linear(5, 64)
+        self.embedding = nn.Linear(num_features, 64)
         
         self.attention = nn.TransformerEncoderLayer(
             d_model=64, 
@@ -78,7 +78,7 @@ class ActorNetwork(nn.Module):
         self.to(self.device)
 
     def forward(self, state):
-        # state shape: [batch_size, 50, 5]
+        # state shape: [batch_size, 50, 25]
         
         x = self.embedding(state)    # shape: [batch_size, 50, 64]
         x = self.attention(x)        # shape: [batch_size, 50, 64] (Now context-aware!)
@@ -103,14 +103,14 @@ class ActorNetwork(nn.Module):
 
 
 class CriticNetwork(nn.Module):
-    def __init__(self, input_dim, alpha,
+    def __init__(self, num_features, alpha,
                 fc1_dims=256, fc2_dims=246,
-                chkpt_dir='backend\\models\\reinforcement-learning\\models'):
+                chkpt_dir='backend\\models\\reinforcement-learning\\models', history_size=5):
         super(CriticNetwork, self).__init__()
 
         self.checkpoint_file = os.path.join(chkpt_dir, 'critic_torch_ppo')
 
-        self.embedding = nn.Linear(5, 64)
+        self.embedding = nn.Linear(num_features, 64)
         
         self.attention = nn.TransformerEncoderLayer(
             d_model=64, 
@@ -131,7 +131,7 @@ class CriticNetwork(nn.Module):
         self.to(self.device)
 
     def forward(self, state):
-        # state shape: [batch_size, 50, 5]
+        # state shape: [batch_size, 50, 25]
         x = self.embedding(state)
         x = self.attention(x)
         
@@ -149,8 +149,8 @@ class CriticNetwork(nn.Module):
 
 
 class Agent:
-    def __init__(self, input_dim, n_actions, gamma=0.99, alpha=0.0003, gae_lambda=0.95,
-                 policy_clip=0.2, batch_size=64, N=2048, n_epochs=10):
+    def __init__(self, num_features, n_actions, gamma=0.99, alpha=0.0003, gae_lambda=0.95,
+                 policy_clip=0.2, batch_size=64, N=2048, n_epochs=10, history_size=5):
         # N= horizon. The number of steps before update?
         # TODO: N is never used?
         self.gamma = gamma
@@ -158,8 +158,8 @@ class Agent:
         self.n_epochs = n_epochs
         self.gae_lambda = gae_lambda
 
-        self.actor = ActorNetwork(n_actions, input_dim, alpha)
-        self.critic = CriticNetwork(input_dim, alpha)
+        self.actor = ActorNetwork(n_actions, num_features, alpha, history_size=history_size)
+        self.critic = CriticNetwork(num_features, alpha, history_size=history_size)
         self.memory = PPOMemory(batch_size)
 
     def remember(self, state, action, probs, vals, reward, done):
@@ -176,7 +176,7 @@ class Agent:
         self.critic.load_checkpoint()
 
     def choose_actions(self, observation, explore=True):
-        state = torch.tensor([observation], dtype=torch.float).to(self.actor.device)
+        state = torch.tensor(observation, dtype=torch.float).unsqueeze(0).to(self.actor.device)
 
         dist = self.actor(state)
         value = self.critic(state)
