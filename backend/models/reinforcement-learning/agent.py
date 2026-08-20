@@ -49,9 +49,8 @@ class PPOMemory:
         self.dones = []
 
 class ActorNetwork(nn.Module):
-    def __init__(self, n_actions, num_features, alpha,
-                fc1_dims=256, fc2_dims=246,
-                chkpt_dir='backend\\models\\reinforcement-learning\\models', history_size=5):
+    def __init__(self, n_actions, num_features, alpha, t_feedforward_dim=128,
+                chkpt_dir='backend\\models\\reinforcement-learning\\models'):
         super(ActorNetwork, self).__init__()
 
         self.checkpoint_file = os.path.join(chkpt_dir, 'actor_torch_ppo')
@@ -61,7 +60,7 @@ class ActorNetwork(nn.Module):
         self.attention = nn.TransformerEncoderLayer(
             d_model=64, 
             nhead=4, 
-            dim_feedforward=128, 
+            dim_feedforward=t_feedforward_dim, 
             batch_first=True
         )
         
@@ -78,7 +77,7 @@ class ActorNetwork(nn.Module):
         self.to(self.device)
 
     def forward(self, state):
-        # state shape: [batch_size, 50, 25]
+        # state shape: [batch_size, 50, 21]
         
         x = self.embedding(state)    # shape: [batch_size, 50, 64]
         x = self.attention(x)        # shape: [batch_size, 50, 64] (Now context-aware!)
@@ -103,9 +102,8 @@ class ActorNetwork(nn.Module):
 
 
 class CriticNetwork(nn.Module):
-    def __init__(self, num_features, alpha,
-                fc1_dims=256, fc2_dims=246,
-                chkpt_dir='backend\\models\\reinforcement-learning\\models', history_size=5):
+    def __init__(self, num_features, alpha, t_feedforward_dim=128,
+                chkpt_dir='backend\\models\\reinforcement-learning\\models'):
         super(CriticNetwork, self).__init__()
 
         self.checkpoint_file = os.path.join(chkpt_dir, 'critic_torch_ppo')
@@ -115,7 +113,7 @@ class CriticNetwork(nn.Module):
         self.attention = nn.TransformerEncoderLayer(
             d_model=64, 
             nhead=4, 
-            dim_feedforward=128, 
+            dim_feedforward=t_feedforward_dim, 
             batch_first=True
         )
         
@@ -150,7 +148,7 @@ class CriticNetwork(nn.Module):
 
 class Agent:
     def __init__(self, num_features, n_actions, gamma=0.99, alpha=0.0003, gae_lambda=0.95,
-                 policy_clip=0.2, batch_size=64, N=2048, n_epochs=10, history_size=5):
+                 policy_clip=0.2, batch_size=64, N=2048, n_epochs=10):
         # N= horizon. The number of steps before update?
         # TODO: N is never used?
         self.gamma = gamma
@@ -158,8 +156,8 @@ class Agent:
         self.n_epochs = n_epochs
         self.gae_lambda = gae_lambda
 
-        self.actor = ActorNetwork(n_actions, num_features, alpha, history_size=history_size)
-        self.critic = CriticNetwork(num_features, alpha, history_size=history_size)
+        self.actor = ActorNetwork(n_actions, num_features, alpha)
+        self.critic = CriticNetwork(num_features, alpha)
         self.memory = PPOMemory(batch_size)
 
     def remember(self, state, action, probs, vals, reward, done):
@@ -235,7 +233,8 @@ class Agent:
                 critic_loss = (returns - critic_value)**2
                 critic_loss = critic_loss.mean()
 
-                total_loss = actor_loss + 0.5*critic_loss
+                total_loss = (actor_loss + 0.5*critic_loss
+                              - 0.005*dist.entropy().mean()) # Reward exploration
                 self.actor.optimizer.zero_grad()
                 self.critic.optimizer.zero_grad()
                 total_loss.backward()

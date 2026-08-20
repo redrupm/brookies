@@ -73,10 +73,10 @@ BATCH_SIZE = 128
 
 feed = StockDataFeed(DATA_DIR + "testing_feed.parquet")
 
-env = DynamicSlotTradingEnv(data_feed=feed, initial_balance=10000.0)
+env = DynamicSlotTradingEnv(data_feed=feed, initial_balance=10000.0, history_size=5)
 print(env.observation_space.shape)
 
-agent = Agent(num_features=env.observation_space.shape[1], n_actions=51, N=N, batch_size=BATCH_SIZE, history_size=5)
+agent = Agent(num_features=env.observation_space.shape[1], n_actions=(NUM_STOCKS + 1), N=N, batch_size=BATCH_SIZE)
 
 best_score = -10000 # env.reward_range[0]??
 score_history = []
@@ -127,3 +127,8 @@ avgs = []
 for date in df['Date'].unique():
     avgs.append(df[df['Date'] == date]['Open'].mean())
 print([float(i) for i in avgs])
+
+print()
+print(env.total_investments)
+print()
+print(env.diversities)

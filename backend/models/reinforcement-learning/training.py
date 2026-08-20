@@ -9,12 +9,12 @@ NUM_EPISODES = 500
 N = 1024
 BATCH_SIZE = 128
 
-feed = StockDataFeed(DATA_DIR + "master_feed.parquet")
+feed = StockDataFeed(DATA_DIR + "training_feed.parquet")
 
-env = DynamicSlotTradingEnv(data_feed=feed, initial_balance=10000.0)
+env = DynamicSlotTradingEnv(data_feed=feed, initial_balance=10000.0, history_size=5)
 print(env.observation_space.shape)
 
-agent = Agent(num_features=env.observation_space.shape[1], n_actions=51, N=N, batch_size=BATCH_SIZE, history_size=5) # TODO: env.observation_space.shape?
+agent = Agent(num_features=env.observation_space.shape[1], n_actions=(NUM_STOCKS + 1), N=N, batch_size=BATCH_SIZE)
 
 best_score = -10000 # env.reward_range[0]??
 score_history = []
@@ -53,6 +53,6 @@ for episode in range(NUM_EPISODES):
         best_final_portfolio = avg_final_portfolio
 
     print('episode', episode, 'score %.3f' % score, 'avg score %.3f' % avg_score, 'portfolio %.3f' % final_portfolio_history[-1], 'avg final portfolio %.3f' % avg_final_portfolio,
-          'time_steps', n_steps, 'learning_steps', learn_iters)
+          'time_steps', n_steps, 'learning_steps', learn_iters, 'stocks owned', env.diversities[-1])
 print([float(i) for i in score_history])
 print([float(i) for i in final_portfolio_history])

@@ -1,4 +1,5 @@
 import pandas as pd
+from constants import NUM_STOCKS
 
 class StockDataFeed:
     """
@@ -78,7 +79,7 @@ class StockDataFeed:
             return float(day_df.loc[ticker, 'Close'])
         return 0.0
 
-    def get_top_screener_stocks(self, step, top_n=50):
+    def get_top_screener_stocks(self, step, top_n=NUM_STOCKS):
         """
         Acts as the dynamic screener. Returns a list of the best ticker 
         symbols for this specific day based on your app.py trend scores.

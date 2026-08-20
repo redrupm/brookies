@@ -1,11 +1,12 @@
 import gymnasium as gym
 from gymnasium import spaces
 import numpy as np
+from constants import NUM_STOCKS
 
 class DynamicSlotTradingEnv(gym.Env):
     """
     A custom Gymnasium environment using a Dynamic Slotting buffer.
-    Action Space: 51 continuous logits (Cash + 50 Asset Slots).
+    Action Space: 51 continuous logits (Cash + 50 Asset Slots). TODO: Not 50 anymore
     Observation Space: 50 active slots x N features.
     """
     
@@ -13,7 +14,7 @@ class DynamicSlotTradingEnv(gym.Env):
         super().__init__()
         
         # Configuration
-        self.max_slots = 50
+        self.max_slots = NUM_STOCKS
         self.num_features = 5 # e.g., Norm_Price, Score, Confidence, Direction, Pct_Owned
         self.initial_balance = initial_balance
         self.transaction_fee = transaction_fee_bps / 10000.0
@@ -46,6 +47,9 @@ class DynamicSlotTradingEnv(gym.Env):
         self.active_tickers = [] 
         # Tracks the number of shares owned for each ticker in the slots
         self.holdings = np.zeros(self.max_slots, dtype=np.float32)
+
+        self.total_investments = []
+        self.diversities = []
         
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
@@ -58,7 +62,6 @@ class DynamicSlotTradingEnv(gym.Env):
         obs = self._build_observation()
         
         return obs, {}
-
 
 
     def step(self, action):
@@ -134,6 +137,8 @@ class DynamicSlotTradingEnv(gym.Env):
         next_holdings = np.zeros(self.max_slots, dtype=np.float32)
         
         slot_index = 0
+
+        total_invested = 0
         
         # -- PRIORITY 1: Map currently held positions --
         for i, ticker in enumerate(self.active_tickers):
@@ -147,21 +152,23 @@ class DynamicSlotTradingEnv(gym.Env):
                     # Fetch features from data pipeline
                     features = self.data_feed.get_features(ticker, max(s, 0))
                     
-                    
                     temp_obs += [
                         features['norm_price'], 
-                        features['score'], 
-                        features['confidence'], 
+                        features['score'] / 10.0, 
+                        features['confidence'] / 100.0, 
                         features['direction']
                     ]
 
                 # Append the "Percent Owned" feature to the state
                 features = self.data_feed.get_features(ticker, self.current_step)
                 pct_owned = (self.holdings[i] * features['price']) / self.portfolio_value
+                total_invested += self.holdings[i] * features['price']
 
                 obs[slot_index] = temp_obs + [pct_owned] # TODO: Does this make sense here?
                 slot_index += 1
-                
+        self.total_investments.append(float(total_invested))
+        self.diversities.append(len(self.active_tickers))
+        
         # -- PRIORITY 2: Fill remaining slots with new screener ideas --
         # Pull the day's top sorted stocks, excluding ones we already hold
         screener_candidates = self.data_feed.get_top_screener_stocks(self.current_step)
@@ -175,12 +182,12 @@ class DynamicSlotTradingEnv(gym.Env):
 
                 temp_obs = []
 
-                for i in range(self.current_step - self.history_size + 1, self.current_step + 1):
-                    features = self.data_feed.get_features(ticker, max(i, 0))
+                for j in range(self.current_step - self.history_size + 1, self.current_step + 1):
+                    features = self.data_feed.get_features(ticker, max(j, 0))
                     temp_obs += [
                         features['norm_price'], 
-                        features['score'], 
-                        features['confidence'], 
+                        features['score'] / 10.0, 
+                        features['confidence'] / 100.0, 
                         features['direction']
                     ]
                 obs[slot_index] = temp_obs + [0.0]
@@ -194,8 +201,4 @@ class DynamicSlotTradingEnv(gym.Env):
         
     def _get_current_prices(self, tickers):
         # Helper to extract an array of current prices for the active slots
-        # prices = []
-        # for t in tickers:
-        #     prices += [self.data_feed.get_price(t, self.current_step) for d in range(self.current_step - self.history_size, self.current_step + 1)]
-        # return np.array(prices, dtype=np.float32)
         return np.array([self.data_feed.get_price(t, self.current_step) for t in tickers], dtype=np.float32)
