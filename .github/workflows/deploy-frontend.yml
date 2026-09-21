@@ -1,0 +1,53 @@
+name: Deploy frontend to Azure Static Web Apps
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/deploy-frontend.yml'
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+    branches: [main]
+    paths:
+      - 'frontend/**'
+
+jobs:
+  build_and_deploy_job:
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.action != 'closed')
+    runs-on: ubuntu-latest
+    name: Build and deploy
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+      - name: Deploy
+        id: deploy
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          action: upload
+          app_location: 'frontend'
+          output_location: 'dist'
+        env:
+          # Points the built SPA at the Azure Container Apps backend. Set once
+          # as a repo variable after the first infra deploy (Settings ->
+          # Secrets and variables -> Actions -> Variables) — the Container
+          # Apps FQDN is stable across redeploys, so this doesn't need to
+          # change on every push.
+          VITE_API_BASE_URL: ${{ vars.BACKEND_API_URL }}
+
+  close_pull_request_job:
+    if: github.event_name == 'pull_request' && github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    name: Close pull request
+    steps:
+      - name: Close pull request
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          action: close
