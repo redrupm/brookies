@@ -16,6 +16,11 @@ FRONTEND_BUILD_DIR = BASE_DIR / "frontend" / "build"
 app = Flask(__name__)
 CORS(app, resources={r"/api/*": {"origins": "*"}})
 
+@app.get("/api/health")
+def health():
+    """Liveness/readiness probe target for Azure Container Apps."""
+    return jsonify({"status": "ok"}), 200
+
 @app.post("/api/prices")
 def get_stock_prices():
     """API endpoint to get stock price data for target stock"""
@@ -168,11 +173,11 @@ def _initialize_news_model():
     _news_model_error = predictor.load_error or "Unknown news model initialization error."
     print(f"WARNING: News transformer unavailable; using lexical fallback: {_news_model_error}")
 
+# Initialize models at import time (not just under `if __name__ == "__main__"`)
+# so a production WSGI server like gunicorn, which imports this module rather
+# than executing it as a script, still loads the models before serving requests.
+_initialize_trend_model()
+_initialize_news_model()
+
 if __name__ == "__main__":
-    # Initialize models on startup
-    _initialize_trend_model()
-    _initialize_news_model()
-    # if os.getenv("PRECOMPUTE_TRENDS", "0").lower() in {"1", "true", "yes"}:
-    #     _compute_trend_predictions()
-    
     app.run(host="0.0.0.0", port=int(os.getenv("PORT", "8000")))
